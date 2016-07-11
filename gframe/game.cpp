@@ -205,16 +205,16 @@ bool Game::Initialize() {
 	wInfos->setVisible(false);
 	//info
 	irr::gui::IGUITab* tabInfo = wInfos->addTab(dataManager.GetSysString(1270));
-	stName = env->addStaticText(L"", rect<s32>(10, 10, 287, 32), true, false, tabInfo, -1, false);
+	stName = env->addStaticText(L"", rect<s32>(8, 10, 293, 32), true, false, tabInfo, -1, false);
 	stName->setTextAlignment(irr::gui::EGUIA_CENTER, irr::gui::EGUIA_CENTER);
-	stInfo = env->addStaticText(L"", rect<s32>(15, 37, 296, 60), false, true, tabInfo, -1, false);
+	stInfo = env->addStaticText(L"", rect<s32>(10, 37, 292, 60), false, true, tabInfo, -1, false);
 	stInfo->setOverrideColor(SColor(255, 0, 0, 255));
-	stDataInfo = env->addStaticText(L"", rect<s32>(15, 60, 296, 83), false, true, tabInfo, -1, false);
+	stDataInfo = env->addStaticText(L"", rect<s32>(10, 60, 292, 83), false, true, tabInfo, -1, false);
 	stDataInfo->setOverrideColor(SColor(255, 0, 0, 255));
-	stSetName = env->addStaticText(L"", rect<s32>(15, 83, 296, 106), false, true, tabInfo, -1, false);
+	stSetName = env->addStaticText(L"", rect<s32>(10, 83, 292, 106), false, true, tabInfo, -1, false);
 	stSetName->setOverrideColor(SColor(255, 0, 0, 255));
-	stText = env->addStaticText(L"", rect<s32>(15, 106, 287, 324), false, true, tabInfo, -1, false);
-	scrCardText = env->addScrollBar(false, rect<s32>(267, 106, 287, 324), tabInfo, SCROLL_CARDTEXT);
+	stText = env->addStaticText(L"", rect<s32>(10, 106, 292, 324), false, true, tabInfo, -1, false);
+	scrCardText = env->addScrollBar(false, rect<s32>(272, 106, 292, 324), tabInfo, SCROLL_CARDTEXT);
 	scrCardText->setLargeStep(1);
 	scrCardText->setSmallStep(1);
 	scrCardText->setVisible(false);
@@ -544,7 +544,7 @@ bool Game::Initialize() {
 	env->setFocus(wMainMenu);
 	for (u32 i = 0; i < EGDC_COUNT; ++i) {
 		SColor col = env->getSkin()->getColor((EGUI_DEFAULT_COLOR)i);
-		col.setAlpha(224);
+		col.setAlpha(255);
 		env->getSkin()->setColor((EGUI_DEFAULT_COLOR)i, col);
 	}
 	hideChat = false;
@@ -1018,16 +1018,16 @@ void Game::ShowCardInfo(int code) {
 			wcscat(formatBuffer, scaleBuffer);
 		}
 		stDataInfo->setText(formatBuffer);
-		stSetName->setRelativePosition(rect<s32>(15, 83, 296, 106));
-		stText->setRelativePosition(rect<s32>(15, 83 + offset, 287, 324));
-		scrCardText->setRelativePosition(rect<s32>(267, 83 + offset, 287, 324));
+		stSetName->setRelativePosition(rect<s32>(10, 83, 292, 106));
+		stText->setRelativePosition(rect<s32>(10, 83 + offset, 292, 324));
+		scrCardText->setRelativePosition(rect<s32>(272, 83 + offset, 292, 324));
 	} else {
 		myswprintf(formatBuffer, L"[%ls]", dataManager.FormatType(cd.type));
 		stInfo->setText(formatBuffer);
 		stDataInfo->setText(L"");
-		stSetName->setRelativePosition(rect<s32>(15, 60, 296, 83));
-		stText->setRelativePosition(rect<s32>(15, 60 + offset, 287, 324));
-		scrCardText->setRelativePosition(rect<s32>(267, 60 + offset, 287, 324));
+		stSetName->setRelativePosition(rect<s32>(10, 60, 292, 83));
+		stText->setRelativePosition(rect<s32>(10, 60 + offset, 292, 324));
+		scrCardText->setRelativePosition(rect<s32>(272, 60 + offset, 292, 324));
 	}
 	showingtext = dataManager.GetText(code);
 	const auto& tsize = stText->getRelativePosition();
