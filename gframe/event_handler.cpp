@@ -148,6 +148,137 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				UpdateChainButtons();
 				break;
 			}
+			case BUTTON_CANCEL_OR_FINISH: {
+				switch (mainGame->dInfo.curMsg) {
+				case MSG_WAITING: {
+					if (mainGame->wCardSelect->isVisible()) {
+						mainGame->HideElement(mainGame->wCardSelect);
+						ShowCancelOrFinishButton(0);
+					}
+					break;
+				}
+				case MSG_SELECT_BATTLECMD: {
+					if (mainGame->wCardSelect->isVisible()) {
+						mainGame->HideElement(mainGame->wCardSelect);
+						ShowCancelOrFinishButton(0);
+					}
+					if (mainGame->wOptions->isVisible()) {
+						mainGame->HideElement(mainGame->wOptions);
+						ShowCancelOrFinishButton(0);
+					}
+					break;
+				}
+				case MSG_SELECT_IDLECMD: {
+					if (mainGame->wCardSelect->isVisible()) {
+						mainGame->HideElement(mainGame->wCardSelect);
+						ShowCancelOrFinishButton(0);
+					}
+					if (mainGame->wOptions->isVisible()) {
+						mainGame->HideElement(mainGame->wOptions);
+						ShowCancelOrFinishButton(0);
+					}
+					break;
+				}
+				case MSG_SELECT_YESNO:
+				case MSG_SELECT_EFFECTYN: {
+					if (highlighting_card)
+						highlighting_card->is_highlighting = false;
+					highlighting_card = 0;
+					DuelClient::SetResponseI(0);
+					mainGame->HideElement(mainGame->wQuery, true);
+					break;
+				}
+				case MSG_SELECT_CARD: {
+					if (selected_cards.size() == 0) {
+						if (select_cancelable) {
+							DuelClient::SetResponseI(-1);
+							ShowCancelOrFinishButton(0);
+							if (mainGame->wCardSelect->isVisible())
+								mainGame->HideElement(mainGame->wCardSelect, true);
+							else
+								DuelClient::SendResponse();
+						}
+						break;
+					}
+					if (mainGame->wQuery->isVisible()) {
+						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
+						mainGame->HideElement(mainGame->wQuery, true);
+						break;
+					}
+					if (select_ready) {
+						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
+						if (mainGame->wCardSelect->isVisible())
+							mainGame->HideElement(mainGame->wCardSelect, true);
+						else
+							DuelClient::SendResponse();
+					}
+					break;
+				}
+				case MSG_SELECT_TRIBUTE: {
+					if (selected_cards.size() == 0) {
+						if (select_cancelable) {
+							DuelClient::SetResponseI(-1);
+							if (mainGame->wCardSelect->isVisible())
+								mainGame->HideElement(mainGame->wCardSelect, true);
+							else
+								DuelClient::SendResponse();
+						}
+						break;
+					}
+					if (mainGame->wQuery->isVisible()) {
+						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
+						mainGame->HideElement(mainGame->wQuery, true);
+						break;
+					}
+					break;
+				}
+				case MSG_SELECT_SUM: {
+					if (mainGame->wQuery->isVisible()) {
+						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
+						mainGame->HideElement(mainGame->wQuery, true);
+						break;
+					}
+					break;
+				}
+				case MSG_SELECT_CHAIN: {
+					if (chain_forced)
+						break;
+					if (mainGame->wCardSelect->isVisible()) {
+						mainGame->HideElement(mainGame->wCardSelect);
+						ShowCancelOrFinishButton(0);
+						break;
+					}
+					if (mainGame->wQuery->isVisible()) {
+						DuelClient::SetResponseI(-1);
+						ShowCancelOrFinishButton(0);
+						mainGame->HideElement(mainGame->wQuery, true);
+					}
+					else {
+						mainGame->PopupElement(mainGame->wQuery);
+						ShowCancelOrFinishButton(0);
+					}
+					if (mainGame->wOptions->isVisible()) {
+						DuelClient::SetResponseI(-1);
+						ShowCancelOrFinishButton(0);
+						mainGame->HideElement(mainGame->wOptions);
+					}
+					break;
+				}
+				case MSG_SORT_CHAIN:
+				case MSG_SORT_CARD: {
+					if (mainGame->wCardSelect->isVisible()) {
+						DuelClient::SetResponseI(-1);
+						mainGame->HideElement(mainGame->wCardSelect, true);
+					}
+					break;
+				}
+				}
+				break;
+			}
 			case BUTTON_MSG_OK: {
 				mainGame->HideElement(mainGame->wMessage);
 				mainGame->actionSignal.Set();
@@ -164,11 +295,17 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					mainGame->HideElement(mainGame->wQuery, true);
 					break;
 				}
-				case MSG_SELECT_CHAIN:
 				case MSG_SELECT_CARD:
 				case MSG_SELECT_TRIBUTE:
 				case MSG_SELECT_SUM: {
 					mainGame->HideElement(mainGame->wQuery);
+					break;
+				}
+				case MSG_SELECT_CHAIN: {
+					mainGame->HideElement(mainGame->wQuery);
+					if (!chain_forced) {
+						ShowCancelOrFinishButton(1);
+					}
 					break;
 				}
 				default: {
@@ -192,12 +329,14 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				case MSG_SELECT_CHAIN: {
 					DuelClient::SetResponseI(-1);
 					mainGame->HideElement(mainGame->wQuery, true);
+					ShowCancelOrFinishButton(0);
 					break;
 				}
 				case MSG_SELECT_CARD:
 				case MSG_SELECT_TRIBUTE:
 				case MSG_SELECT_SUM: {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wQuery, true);
 					break;
 				}
@@ -249,15 +388,15 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					DuelClient::SetResponseI(selected_option);
 				} else if (mainGame->dInfo.curMsg == MSG_SELECT_IDLECMD) {
 					int index = 0;
-					while(activatable_cards[index] != command_card || activatable_descs[index] != select_options[selected_option]) index++;
+					while(activatable_cards[index] != command_card || activatable_descs[index].first != select_options[selected_option]) index++;
 					DuelClient::SetResponseI((index << 16) + 5);
 				} else if (mainGame->dInfo.curMsg == MSG_SELECT_BATTLECMD) {
 					int index = 0;
-					while(activatable_cards[index] != command_card || activatable_descs[index] != select_options[selected_option]) index++;
+					while(activatable_cards[index] != command_card || activatable_descs[index].first != select_options[selected_option]) index++;
 					DuelClient::SetResponseI(index << 16);
 				} else {
 					int index = 0;
-					while(activatable_cards[index] != command_card || activatable_descs[index] != select_options[selected_option]) index++;
+					while(activatable_cards[index] != command_card || activatable_descs[index].first != select_options[selected_option]) index++;
 					DuelClient::SetResponseI(index);
 				}
 				mainGame->HideElement(mainGame->wOptions, true);
@@ -282,14 +421,23 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				DuelClient::SendResponse();
 				break;
 			}
-			case BUTTON_CMD_ACTIVATE: {
+			case BUTTON_CMD_ACTIVATE:
+			case BUTTON_CMD_RESET: {
 				mainGame->wCmdMenu->setVisible(false);
+				ShowCancelOrFinishButton(0);
 				if(!list_command) {
 					int index = -1;
 					select_options.clear();
 					for (size_t i = 0; i < activatable_cards.size(); ++i) {
 						if (activatable_cards[i] == clicked_card) {
-							select_options.push_back(activatable_descs[i]);
+							if(activatable_descs[i].second == EDESC_OPERATION)
+								continue;
+							if(activatable_descs[i].second == EDESC_RESET) {
+								if(id == BUTTON_CMD_ACTIVATE) continue;
+							} else {
+								if(id == BUTTON_CMD_RESET) continue;
+							}
+							select_options.push_back(activatable_descs[i].first);
 							if (index == -1) index = i;
 						}
 					}
@@ -312,6 +460,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					}
 				} else {
 					selectable_cards.clear();
+					conti_selecting = false;
 					switch(command_location) {
 					case LOCATION_DECK: {
 						for(size_t i = 0; i < deck[command_controler].size(); ++i)
@@ -329,8 +478,6 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 						for(size_t i = 0; i < remove[command_controler].size(); ++i)
 							if(remove[command_controler][i]->cmdFlag & COMMAND_ACTIVATE)
 								selectable_cards.push_back(remove[command_controler][i]);
-						selectable_cards.reserve(selectable_cards.size() + conti_cards.size());
-						selectable_cards.insert(selectable_cards.end(), conti_cards.begin(), conti_cards.end());
 						break;
 					}
 					case LOCATION_EXTRA: {
@@ -339,9 +486,19 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 								selectable_cards.push_back(extra[command_controler][i]);
 						break;
 					}
+					case POSITION_HINT: {
+						selectable_cards.insert(selectable_cards.end(), conti_cards.begin(), conti_cards.end());
+						conti_selecting = true;
+						break;
 					}
-					mainGame->wCardSelect->setText(dataManager.GetSysString(566));
-					list_command = COMMAND_ACTIVATE;
+					}
+					if(!conti_selecting) {
+						mainGame->wCardSelect->setText(dataManager.GetSysString(566));
+						list_command = COMMAND_ACTIVATE;
+					} else {
+						mainGame->wCardSelect->setText(dataManager.GetSysString(568));
+						list_command = COMMAND_OPERATION;
+					}
 					ShowSelectCard(true, true);
 				}
 				break;
@@ -398,6 +555,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					list_command = COMMAND_SPSUMMON;
 					mainGame->wCardSelect->setText(dataManager.GetSysString(509));
 					ShowSelectCard();
+					ShowCancelOrFinishButton(1);
 				}
 				break;
 			}
@@ -456,6 +614,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			case BUTTON_CMD_SHOWLIST: {
 				mainGame->wCmdMenu->setVisible(false);
 				selectable_cards.clear();
+				wchar_t formatBuffer[2048];
 				switch(command_location) {
 				case LOCATION_DECK: {
 					for(int32 i = (int32)deck[command_controler].size() - 1; i >= 0 ; --i)
@@ -543,13 +702,18 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 						mainGame->HideElement(mainGame->wCardSelect, true);
 						break;
 					}
-					if(list_command == COMMAND_ACTIVATE) {
+					if(list_command == COMMAND_ACTIVATE || list_command == COMMAND_OPERATION) {
 						int index = -1;
 						command_card = selectable_cards[id - BUTTON_CARD_0 + mainGame->scrCardList->getPos() / 10];
 						select_options.clear();
 						for (size_t i = 0; i < activatable_cards.size(); ++i) {
 							if (activatable_cards[i] == command_card) {
-								select_options.push_back(activatable_descs[i]);
+								if(activatable_descs[i].second == EDESC_OPERATION) {
+									if(list_command == COMMAND_ACTIVATE) continue;
+								} else {
+									if(list_command == COMMAND_OPERATION) continue;
+								}
+								select_options.push_back(activatable_descs[i].first);
 								if (index == -1) index = i;
 							}
 						}
@@ -592,13 +756,19 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					int sel = selected_cards.size();
 					if (sel >= select_max) {
 						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
 						mainGame->HideElement(mainGame->wCardSelect, true);
 					} else if (sel >= select_min) {
 						select_ready = true;
 						mainGame->btnSelectOK->setVisible(true);
+						ShowCancelOrFinishButton(2);
 					} else {
 						select_ready = false;
 						mainGame->btnSelectOK->setVisible(false);
+						if (select_cancelable && sel == 0)
+							ShowCancelOrFinishButton(1);
+						else
+							ShowCancelOrFinishButton(0);
 					}
 					break;
 				}
@@ -612,6 +782,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				case MSG_SORT_CARD: {
 					int offset = mainGame->scrCardList->getPos() / 10;
 					int sel_seq = id - BUTTON_CARD_0 + offset;
+					wchar_t formatBuffer[2048];
 					if(sort_list[sel_seq]) {
 						select_min--;
 						int sel = sort_list[sel_seq];
@@ -654,6 +825,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				if(mainGame->dInfo.curMsg == MSG_SELECT_CARD || mainGame->dInfo.curMsg == MSG_SELECT_SUM) {
 					if(select_ready) {
 						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
 						mainGame->HideElement(mainGame->wCardSelect, true);
 					}
 					break;
@@ -736,19 +908,25 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			case SCROLL_CARD_SELECT: {
 				int pos = mainGame->scrCardList->getPos() / 10;
 				for(int i = 0; i < 5; ++i) {
+					// draw selectable_cards[i + pos] in btnCardSelect[i]
 					mainGame->stCardPos[i]->enableOverrideColor(false);
+					// image
 					if(selectable_cards[i + pos]->code)
 						mainGame->btnCardSelect[i]->setImage(imageManager.GetTexture(selectable_cards[i + pos]->code));
+					else if(conti_selecting)
+						mainGame->btnCardSelect[i]->setImage(imageManager.GetTexture(selectable_cards[i + pos]->chain_code));
 					else
 						mainGame->btnCardSelect[i]->setImage(imageManager.tCover[0]);
 					mainGame->btnCardSelect[i]->setRelativePosition(rect<s32>(30 + i * 125, 55, 30 + 120 + i * 125, 225));
+					// text
+					wchar_t formatBuffer[2048];
 					if(sort_list.size()) {
 						if(sort_list[pos + i] > 0)
 							myswprintf(formatBuffer, L"%d", sort_list[pos + i]);
 						else
 							myswprintf(formatBuffer, L"");
 					} else {
-						if(selectable_cards[i + pos]->is_conti && !selectable_cards[i + pos]->code)
+						if(conti_selecting)
 							myswprintf(formatBuffer, L"%ls", DataManager::unknown_string);
 						else if(selectable_cards[i + pos]->location == LOCATION_OVERLAY)
 							myswprintf(formatBuffer, L"%ls[%d](%d)",
@@ -759,6 +937,9 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 								selectable_cards[i + pos]->sequence + 1);
 					}
 					mainGame->stCardPos[i]->setText(formatBuffer);
+					// color
+					if(conti_selecting)
+						mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
 					if(selectable_cards[i + pos]->location == LOCATION_OVERLAY) {
 						if(selectable_cards[i + pos]->owner != selectable_cards[i + pos]->overlayTarget->controler)
 							mainGame->stCardPos[i]->setOverrideColor(0xff0000ff);
@@ -766,13 +947,24 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 							mainGame->stCardPos[i]->setBackgroundColor(0xffffff00);
 						else if(selectable_cards[i + pos]->overlayTarget->controler)
 							mainGame->stCardPos[i]->setBackgroundColor(0xffd0d0d0);
-						else mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
+						else 
+							mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
+					} else if(selectable_cards[i + pos]->location == LOCATION_DECK || selectable_cards[i + pos]->location == LOCATION_EXTRA || selectable_cards[i + pos]->location == LOCATION_REMOVED) {
+						if(selectable_cards[i + pos]->position & POS_FACEDOWN)
+							mainGame->stCardPos[i]->setOverrideColor(0xff0000ff);
+						if(selectable_cards[i + pos]->is_selected)
+							mainGame->stCardPos[i]->setBackgroundColor(0xffffff00);
+						else if(selectable_cards[i + pos]->controler)
+							mainGame->stCardPos[i]->setBackgroundColor(0xffd0d0d0);
+						else 
+							mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
 					} else {
 						if(selectable_cards[i + pos]->is_selected)
 							mainGame->stCardPos[i]->setBackgroundColor(0xffffff00);
 						else if(selectable_cards[i + pos]->controler)
 							mainGame->stCardPos[i]->setBackgroundColor(0xffd0d0d0);
-						else mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
+						else 
+							mainGame->stCardPos[i]->setBackgroundColor(0xffffffff);
 					}
 				}
 				break;
@@ -780,12 +972,14 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			case SCROLL_CARD_DISPLAY: {
 				int pos = mainGame->scrDisplayList->getPos() / 10;
 				for(int i = 0; i < 5; ++i) {
+					// draw display_cards[i + pos] in btnCardDisplay[i]
 					mainGame->stDisplayPos[i]->enableOverrideColor(false);
 					if(display_cards[i + pos]->code)
 						mainGame->btnCardDisplay[i]->setImage(imageManager.GetTexture(display_cards[i + pos]->code));
 					else
 						mainGame->btnCardDisplay[i]->setImage(imageManager.tCover[0]);
 					mainGame->btnCardDisplay[i]->setRelativePosition(rect<s32>(30 + i * 125, 55, 30 + 120 + i * 125, 225));
+					wchar_t formatBuffer[2048];
 					if(display_cards[i + pos]->location == LOCATION_OVERLAY) {
 							myswprintf(formatBuffer, L"%ls[%d](%d)",
 								dataManager.FormatLocation(display_cards[i + pos]->overlayTarget->location, display_cards[i + pos]->overlayTarget->sequence),
@@ -797,13 +991,23 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					if(display_cards[i + pos]->location == LOCATION_OVERLAY) {
 						if(display_cards[i + pos]->owner != display_cards[i + pos]->overlayTarget->controler)
 							mainGame->stDisplayPos[i]->setOverrideColor(0xff0000ff);
+						// BackgroundColor: controller of the xyz monster
 						if(display_cards[i + pos]->overlayTarget->controler)
 							mainGame->stDisplayPos[i]->setBackgroundColor(0xffd0d0d0);
-						else mainGame->stDisplayPos[i]->setBackgroundColor(0xffffffff);
+						else 
+							mainGame->stDisplayPos[i]->setBackgroundColor(0xffffffff);
+					} else if(display_cards[i + pos]->location == LOCATION_EXTRA || display_cards[i + pos]->location == LOCATION_REMOVED) {
+						if(display_cards[i + pos]->position & POS_FACEDOWN)
+							mainGame->stDisplayPos[i]->setOverrideColor(0xff0000ff);
+						if(display_cards[i + pos]->controler)
+							mainGame->stDisplayPos[i]->setBackgroundColor(0xffd0d0d0);
+						else 
+							mainGame->stDisplayPos[i]->setBackgroundColor(0xffffffff);
 					} else {
 						if(display_cards[i + pos]->controler)
 							mainGame->stDisplayPos[i]->setBackgroundColor(0xffd0d0d0);
-						else mainGame->stDisplayPos[i]->setBackgroundColor(0xffffffff);
+						else 
+							mainGame->stDisplayPos[i]->setBackgroundColor(0xffffffff);
 					}
 				}
 				break;
@@ -919,6 +1123,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			if(hovered_location & 0xe)
 				clicked_card = GetCard(hovered_controler, hovered_location, hovered_sequence);
 			else clicked_card = 0;
+			wchar_t formatBuffer[2048];
 			if(mainGame->dInfo.isReplay) {
 				if(mainGame->wCardSelect->isVisible())
 					break;
@@ -994,6 +1199,24 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					for(int32 i = (int32)grave[hovered_controler].size() - 1; i >= 0 ; --i)
 						selectable_cards.push_back(grave[hovered_controler][i]);
 					myswprintf(formatBuffer, L"%ls(%d)", dataManager.GetSysString(1004), grave[hovered_controler].size());
+					mainGame->wCardSelect->setText(formatBuffer);
+					break;
+				}
+				case LOCATION_REMOVED: {
+					if (remove[hovered_controler].size() == 0)
+						break;
+					for (int32 i = (int32)remove[hovered_controler].size() - 1; i >= 0; --i)
+						selectable_cards.push_back(remove[hovered_controler][i]);
+					myswprintf(formatBuffer, L"%ls(%d)", dataManager.GetSysString(1005), remove[hovered_controler].size());
+					mainGame->wCardSelect->setText(formatBuffer);
+					break;
+				}
+				case LOCATION_EXTRA: {
+					if (extra[hovered_controler].size() == 0)
+						break;
+					for (int32 i = (int32)extra[hovered_controler].size() - 1; i >= 0; --i)
+						selectable_cards.push_back(extra[hovered_controler][i]);
+					myswprintf(formatBuffer, L"%ls(%d)", dataManager.GetSysString(1006), extra[hovered_controler].size());
 					mainGame->wCardSelect->setText(formatBuffer);
 					break;
 				}
@@ -1077,14 +1300,11 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				}
 				case LOCATION_REMOVED: {
 					int command_flag = 0;
-					if(remove[hovered_controler].size() == 0 && conti_cards.size() == 0)
+					if(remove[hovered_controler].size() == 0)
 						break;
 					for(size_t i = 0; i < remove[hovered_controler].size(); ++i)
 						command_flag |= remove[hovered_controler][i]->cmdFlag;
-					if(conti_cards.size())
-						command_flag |= COMMAND_ACTIVATE;
-					if(remove[hovered_controler].size())
-						command_flag |= COMMAND_LIST;
+					command_flag |= COMMAND_LIST;
 					list_command = 1;
 					ShowMenu(command_flag, x, y);
 					break;
@@ -1096,6 +1316,16 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					for(size_t i = 0; i < extra[hovered_controler].size(); ++i)
 						command_flag |= extra[hovered_controler][i]->cmdFlag;
 					command_flag |= COMMAND_LIST;
+					list_command = 1;
+					ShowMenu(command_flag, x, y);
+					break;
+				}
+				case POSITION_HINT: {
+					int command_flag = 0;
+					if(conti_cards.size() == 0)
+						break;
+					if(conti_cards.size())
+						command_flag |= COMMAND_OPERATION;
 					list_command = 1;
 					ShowMenu(command_flag, x, y);
 					break;
@@ -1185,13 +1415,16 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				}
 				if (min >= select_max) {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					DuelClient::SendResponse();
 				} else if (max >= select_min) {
 					if(selected_cards.size() == selectable_cards.size()) {
 						SetResponseSelectedCards();
+						ShowCancelOrFinishButton(0);
 						DuelClient::SendResponse();
 					} else {
 						select_ready = true;
+						ShowCancelOrFinishButton(2);
 						if(mainGame->dInfo.curMsg == MSG_SELECT_TRIBUTE) {
 							wchar_t wbuf[256], *pwbuf = wbuf;
 							BufferIO::CopyWStrRef(dataManager.GetSysString(209), pwbuf, 256);
@@ -1203,6 +1436,10 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					}
 				} else {
 					select_ready = false;
+					if (select_cancelable && min == 0)
+						ShowCancelOrFinishButton(1);
+					else
+						ShowCancelOrFinishButton(0);
 				}
 				break;
 			}
@@ -1222,6 +1459,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					DuelClient::SetResponseB(respbuf, selectable_cards.size());
 					DuelClient::SendResponse();
 				} else {
+					wchar_t formatBuffer[2048];
 					myswprintf(formatBuffer, dataManager.GetSysString(204), select_counter_count, dataManager.GetCounterName(select_counter_type));
 					mainGame->stHintMsg->setText(formatBuffer);
 				}
@@ -1244,6 +1482,12 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 		case irr::EMIE_RMOUSE_LEFT_UP: {
 			if(mainGame->dInfo.isReplay)
 				break;
+			s32 x = event.MouseInput.X;
+			s32 y = event.MouseInput.Y;
+			irr::core::position2di pos(x, y);
+			irr::gui::IGUIElement* root = mainGame->env->getRootGUIElement();
+			if(root->getElementFromPoint(pos) == mainGame->btnCancelOrFinish)
+				mainGame->chkHideHintButton->setChecked(true);
 			if(mainGame->gameConf.control_mode == 1 && event.MouseInput.X > 300) {
 				mainGame->ignore_chain = event.MouseInput.isRightPressed();
 				mainGame->always_chain = false;
@@ -1257,24 +1501,29 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			case MSG_WAITING: {
 				if(mainGame->wCardSelect->isVisible()) {
 					mainGame->HideElement(mainGame->wCardSelect);
+					ShowCancelOrFinishButton(0);
 				}
 				break;
 			}
 			case MSG_SELECT_BATTLECMD: {
 				if(mainGame->wCardSelect->isVisible()) {
 					mainGame->HideElement(mainGame->wCardSelect);
+					ShowCancelOrFinishButton(0);
 				}
 				if(mainGame->wOptions->isVisible()) {
 					mainGame->HideElement(mainGame->wOptions);
+					ShowCancelOrFinishButton(0);
 				}
 				break;
 			}
 			case MSG_SELECT_IDLECMD: {
 				if(mainGame->wCardSelect->isVisible()) {
 					mainGame->HideElement(mainGame->wCardSelect);
+					ShowCancelOrFinishButton(0);
 				}
 				if(mainGame->wOptions->isVisible()) {
 					mainGame->HideElement(mainGame->wOptions);
+					ShowCancelOrFinishButton(0);
 				}
 				break;
 			}
@@ -1291,6 +1540,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				if(selected_cards.size() == 0) {
 					if(select_cancelable) {
 						DuelClient::SetResponseI(-1);
+						ShowCancelOrFinishButton(0);
 						if(mainGame->wCardSelect->isVisible())
 							mainGame->HideElement(mainGame->wCardSelect, true);
 						else
@@ -1300,11 +1550,13 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				}
 				if(mainGame->wQuery->isVisible()) {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wQuery, true);
 					break;
 				}
 				if(select_ready) {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					if(mainGame->wCardSelect->isVisible())
 						mainGame->HideElement(mainGame->wCardSelect, true);
 					else
@@ -1325,6 +1577,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 				}
 				if(mainGame->wQuery->isVisible()) {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wQuery, true);
 					break;
 				}
@@ -1333,6 +1586,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 			case MSG_SELECT_SUM: {
 				if(mainGame->wQuery->isVisible()) {
 					SetResponseSelectedCards();
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wQuery, true);
 					break;
 				}
@@ -1343,16 +1597,20 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					break;
 				if(mainGame->wCardSelect->isVisible()) {
 					mainGame->HideElement(mainGame->wCardSelect);
+					ShowCancelOrFinishButton(0);
 					break;
 				}
 				if(mainGame->wQuery->isVisible()) {
 					DuelClient::SetResponseI(-1);
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wQuery, true);
 				} else {
 					mainGame->PopupElement(mainGame->wQuery);
+					ShowCancelOrFinishButton(0);
 				}
 				if(mainGame->wOptions->isVisible()) {
 					DuelClient::SetResponseI(-1);
+					ShowCancelOrFinishButton(0);
 					mainGame->HideElement(mainGame->wOptions);
 				}
 				break;
@@ -1371,29 +1629,62 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 		case irr::EMIE_MOUSE_MOVED: {
 			if(!mainGame->dInfo.isStarted)
 				break;
+			bool should_show_tip = false;
 			s32 x = event.MouseInput.X;
 			s32 y = event.MouseInput.Y;
-			hovered_location = 0;
 			irr::core::position2di pos(x, y);
-			if(x < 300)
+			wchar_t formatBuffer[2048];
+			if(x < 300) {
+				irr::gui::IGUIElement* root = mainGame->env->getRootGUIElement();
+				irr::gui::IGUIElement* elem = root->getElementFromPoint(pos);
+				if(elem == mainGame->btnCancelOrFinish) {
+					should_show_tip = true;
+					myswprintf(formatBuffer, dataManager.GetSysString(1700), mainGame->btnCancelOrFinish->getText());
+					mainGame->stTip->setText(formatBuffer);
+					irr::core::dimension2d<unsigned int> dtip = mainGame->textFont->getDimension(formatBuffer) + irr::core::dimension2d<unsigned int>(10, 10);
+					mainGame->stTip->setRelativePosition(recti(x - 10 - dtip.Width, y - 10 - dtip.Height, x - 10, y - 10));
+				}
+				mainGame->stTip->setVisible(should_show_tip);
 				break;
+			}
+			hovered_location = 0;
 			ClientCard* mcard = 0;
+			int mplayer = -1;
 			if(!panel || !panel->isVisible() || !panel->getRelativePosition().isPointInside(pos)) {
 				GetHoverField(x, y);
 				if(hovered_location & 0xe)
 					mcard = GetCard(hovered_controler, hovered_location, hovered_sequence);
-				else if(hovered_location == LOCATION_GRAVE && grave[hovered_controler].size())
-					mcard = *(grave[hovered_controler].rbegin());
-				else if(hovered_location == LOCATION_REMOVED && remove[hovered_controler].size()) {
-					mcard = *(remove[hovered_controler].rbegin());
-					if(mcard->position & POS_FACEDOWN)
-						mcard = 0;
-				} else if(hovered_location == LOCATION_DECK && deck[hovered_controler].size())
-					mcard = *(deck[hovered_controler].rbegin());
-				else mcard = 0;
+				else if(hovered_location == LOCATION_GRAVE) {
+					if(grave[hovered_controler].size())
+						mcard = grave[hovered_controler].back();
+				} else if(hovered_location == LOCATION_REMOVED) {
+					if(remove[hovered_controler].size()) {
+						mcard = remove[hovered_controler].back();
+						if(mcard->position & POS_FACEDOWN)
+							mcard = 0;
+					}
+				} else if(hovered_location == LOCATION_DECK) {
+					if(deck[hovered_controler].size())
+						mcard = deck[hovered_controler].back();
+				} else {
+					if(irr::core::recti(327, 8, 630, 51).isPointInside(pos))
+						mplayer = 0;
+					else if(irr::core::recti(689, 8, 991, 51).isPointInside(pos))
+						mplayer = 1;
+				}
 			}
+
 			if(hovered_location == LOCATION_HAND && (mainGame->dInfo.is_shuffling || mainGame->dInfo.curMsg == MSG_SHUFFLE_HAND))
 				mcard = 0;
+			if(mcard == 0 && mplayer < 0)
+				should_show_tip = false;
+			else if(mcard == hovered_card && mplayer == hovered_player) {
+				if(mainGame->stTip->isVisible()) {
+					should_show_tip = true;
+					irr::core::recti tpos = mainGame->stTip->getRelativePosition();
+					mainGame->stTip->setRelativePosition(irr::core::position2di(x - tpos.getWidth() - 10, mcard ? y - tpos.getHeight() - 10 : y + 10));
+				}
+			}
 			if(mcard != hovered_card) {
 				if(hovered_card) {
 					if(hovered_card->location == LOCATION_HAND && !mainGame->dInfo.is_shuffling && mainGame->dInfo.curMsg != MSG_SHUFFLE_HAND) {
@@ -1425,22 +1716,19 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 					}
 					if(mcard->equipTarget)
 						mcard->equipTarget->is_showequip = true;
-					if(mcard->equipped.size())
-						for(auto cit = mcard->equipped.begin(); cit != mcard->equipped.end(); ++cit)
-							(*cit)->is_showequip = true;
-					if(mcard->cardTarget.size())
-						for(auto cit = mcard->cardTarget.begin(); cit != mcard->cardTarget.end(); ++cit)
-							(*cit)->is_showtarget = true;
-					if(mcard->ownerTarget.size())
-						for(auto cit = mcard->ownerTarget.begin(); cit != mcard->ownerTarget.end(); ++cit)
-							(*cit)->is_showtarget = true;
+					for(auto cit = mcard->equipped.begin(); cit != mcard->equipped.end(); ++cit)
+						(*cit)->is_showequip = true;
+					for(auto cit = mcard->cardTarget.begin(); cit != mcard->cardTarget.end(); ++cit)
+						(*cit)->is_showtarget = true;
+					for(auto cit = mcard->ownerTarget.begin(); cit != mcard->ownerTarget.end(); ++cit)
+						(*cit)->is_showtarget = true;
 					if(mcard->code) {
 						mainGame->ShowCardInfo(mcard->code);
 						if(mcard->location & 0xe) {
 							std::wstring str;
+							myswprintf(formatBuffer, L"%ls", dataManager.GetName(mcard->code));
+							str.append(formatBuffer);
 							if(mcard->type & TYPE_MONSTER) {
-								myswprintf(formatBuffer, L"%ls", dataManager.GetName(mcard->code));
-								str.append(formatBuffer);
 								if(mcard->alias && (mcard->alias < mcard->code - 10 || mcard->alias > mcard->code + 10)
 								        && wcscmp(dataManager.GetName(mcard->code), dataManager.GetName(mcard->alias))) {
 									myswprintf(formatBuffer, L"\n(%ls)", dataManager.GetName(mcard->alias));
@@ -1456,32 +1744,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 									myswprintf(formatBuffer, L"\n%d/%d", mcard->lscale, mcard->rscale);
 									str.append(formatBuffer);
 								}
-								if(mcard->counters.size()) {
-									for(std::map<int, int>::iterator ctit = mcard->counters.begin(); ctit != mcard->counters.end(); ++ctit) {
-										myswprintf(formatBuffer, L"\n[%ls]: %d", dataManager.GetCounterName(ctit->first), ctit->second);
-										str.append(formatBuffer);
-									}
-								}
-								if(mcard->cHint && mcard->chValue && (mcard->location & LOCATION_ONFIELD)) {
-									if(mcard->cHint == CHINT_TURN)
-										myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(211), mcard->chValue);
-									else if(mcard->cHint == CHINT_CARD)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(212), dataManager.GetName(mcard->chValue));
-									else if(mcard->cHint == CHINT_RACE)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(213), dataManager.FormatRace(mcard->chValue));
-									else if(mcard->cHint == CHINT_ATTRIBUTE)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(214), dataManager.FormatAttribute(mcard->chValue));
-									else if(mcard->cHint == CHINT_NUMBER)
-										myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(215), mcard->chValue);
-									str.append(formatBuffer);
-								}
-								for(auto iter = mcard->desc_hints.begin(); iter != mcard->desc_hints.end(); ++iter) {
-									myswprintf(formatBuffer, L"\n*%ls", dataManager.GetDesc(iter->first));
-									str.append(formatBuffer);
-								}
 							} else {
-								myswprintf(formatBuffer, L"%ls", dataManager.GetName(mcard->code));
-								str.append(formatBuffer);
 								if(mcard->alias && (mcard->alias < mcard->code - 10 || mcard->alias > mcard->code + 10)) {
 									myswprintf(formatBuffer, L"\n(%ls)", dataManager.GetName(mcard->alias));
 									str.append(formatBuffer);
@@ -1490,37 +1753,35 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 									myswprintf(formatBuffer, L"\n%d/%d", mcard->lscale, mcard->rscale);
 									str.append(formatBuffer);
 								}
-								if(mcard->counters.size()) {
-									for(std::map<int, int>::iterator ctit = mcard->counters.begin(); ctit != mcard->counters.end(); ++ctit) {
-										myswprintf(formatBuffer, L"\n[%ls]: %d", dataManager.GetCounterName(ctit->first), ctit->second);
-										str.append(formatBuffer);
-									}
-								}
-								if(mcard->cHint && mcard->chValue && (mcard->location & LOCATION_ONFIELD)) {
-									if(mcard->cHint == CHINT_TURN)
-										myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(211), mcard->chValue);
-									else if(mcard->cHint == CHINT_CARD)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(212), dataManager.GetName(mcard->chValue));
-									else if(mcard->cHint == CHINT_RACE)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(213), dataManager.FormatRace(mcard->chValue));
-									else if(mcard->cHint == CHINT_ATTRIBUTE)
-										myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(214), dataManager.FormatAttribute(mcard->chValue));
-									else if(mcard->cHint == CHINT_NUMBER)
-										myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(215), mcard->chValue);
-									str.append(formatBuffer);
-								}
-								for(auto iter = mcard->desc_hints.begin(); iter != mcard->desc_hints.end(); ++iter) {
-									myswprintf(formatBuffer, L"\n*%ls", dataManager.GetDesc(iter->first));
-									str.append(formatBuffer);
-								}
 							}
-							mainGame->stTip->setVisible(true);
-							irr::core::dimension2d<unsigned int> dtip = mainGame->textFont->getDimension(str.c_str());
-							mainGame->stTip->setRelativePosition(recti(x - 10 - dtip.Width, y - 10 - dtip.Height, x, y));
+							for(std::map<int, int>::iterator ctit = mcard->counters.begin(); ctit != mcard->counters.end(); ++ctit) {
+								myswprintf(formatBuffer, L"\n[%ls]: %d", dataManager.GetCounterName(ctit->first), ctit->second);
+								str.append(formatBuffer);
+							}
+							if(mcard->cHint && mcard->chValue && (mcard->location & LOCATION_ONFIELD)) {
+								if(mcard->cHint == CHINT_TURN)
+									myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(211), mcard->chValue);
+								else if(mcard->cHint == CHINT_CARD)
+									myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(212), dataManager.GetName(mcard->chValue));
+								else if(mcard->cHint == CHINT_RACE)
+									myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(213), dataManager.FormatRace(mcard->chValue));
+								else if(mcard->cHint == CHINT_ATTRIBUTE)
+									myswprintf(formatBuffer, L"\n%ls%ls", dataManager.GetSysString(214), dataManager.FormatAttribute(mcard->chValue));
+								else if(mcard->cHint == CHINT_NUMBER)
+									myswprintf(formatBuffer, L"\n%ls%d", dataManager.GetSysString(215), mcard->chValue);
+								str.append(formatBuffer);
+							}
+							for(auto iter = mcard->desc_hints.begin(); iter != mcard->desc_hints.end(); ++iter) {
+								myswprintf(formatBuffer, L"\n*%ls", dataManager.GetDesc(iter->first));
+								str.append(formatBuffer);
+							}
+							should_show_tip = true;
+							irr::core::dimension2d<unsigned int> dtip = mainGame->textFont->getDimension(str.c_str()) + irr::core::dimension2d<unsigned int>(10, 10);
+							mainGame->stTip->setRelativePosition(recti(x - 10 - dtip.Width, y - 10 - dtip.Height, x - 10, y - 10));
 							mainGame->stTip->setText(str.c_str());
 						}
 					} else {
-						mainGame->stTip->setVisible(false);
+						should_show_tip = false;
 						mainGame->imgCard->setImage(imageManager.tCover[0]);
 						mainGame->stName->setText(L"");
 						mainGame->stInfo->setText(L"");
@@ -1529,16 +1790,37 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 						mainGame->stText->setText(L"");
 						mainGame->scrCardText->setVisible(false);
 					}
-				} else {
-					mainGame->stTip->setVisible(false);
 				}
 				hovered_card = mcard;
-			} else {
-				if(mainGame->stTip->isVisible()) {
-					irr::core::recti tpos = mainGame->stTip->getRelativePosition();
-					mainGame->stTip->setRelativePosition(irr::core::position2di(x - tpos.getWidth() - 10, y - tpos.getHeight() - 10));
-				}
 			}
+			if(mplayer != hovered_player) {
+				if(mplayer >= 0) {
+					const wchar_t* player_name;
+					if(mplayer == 0) {
+						if(!mainGame->dInfo.isTag || !mainGame->dInfo.tag_player[0])
+							player_name = mainGame->dInfo.hostname;
+						else
+							player_name = mainGame->dInfo.hostname_tag;
+					} else {
+						if(!mainGame->dInfo.isTag || !mainGame->dInfo.tag_player[1])
+							player_name = mainGame->dInfo.clientname;
+						else
+							player_name = mainGame->dInfo.clientname_tag;
+					}
+					std::wstring str(player_name);
+					const auto& player_desc_hints = mainGame->dField.player_desc_hints[mplayer];
+					for(auto iter = player_desc_hints.begin(); iter != player_desc_hints.end(); ++iter) {
+						myswprintf(formatBuffer, L"\n*%ls", dataManager.GetDesc(iter->first));
+						str.append(formatBuffer);
+					}
+					should_show_tip = true;
+					irr::core::dimension2d<unsigned int> dtip = mainGame->textFont->getDimension(str.c_str()) + irr::core::dimension2d<unsigned int>(10, 10);
+					mainGame->stTip->setRelativePosition(recti(x - 10 - dtip.Width, y + 10, x - 10, y + 10 + dtip.Height));
+					mainGame->stTip->setText(str.c_str());
+				}
+				hovered_player = mplayer;
+			}
+			mainGame->stTip->setVisible(should_show_tip);
 			break;
 		}
 		case irr::EMIE_MOUSE_WHEEL: {
@@ -1669,6 +1951,7 @@ bool ClientField::OnEvent(const irr::SEvent& event) {
 						break;
 				}
 				if(display_cards.size()) {
+					wchar_t formatBuffer[2048];
 					myswprintf(formatBuffer, L"%ls(%d)", dataManager.GetSysString(loc_id), display_cards.size());
 					mainGame->wCardDisplay->setText(formatBuffer);
 					ShowLocationCard();
@@ -1788,6 +2071,9 @@ void ClientField::GetHoverField(int x, int y) {
 			if(boardy >= matManager.vFields[82].Pos.Y && boardy <= matManager.vFields[80].Pos.Y) {
 				hovered_controler = 1;
 				hovered_location = LOCATION_REMOVED;
+			} else if(boardy >= matManager.vFields[136].Pos.Y && boardy <= matManager.vFields[138].Pos.Y) {
+				hovered_controler = 0;
+				hovered_location = POSITION_HINT;
 			}
 		} else if(boardx >= matManager.vFields[0].Pos.X && boardx <= matManager.vFields[1].Pos.X) {
 			if(boardy >= matManager.vFields[0].Pos.Y && boardy <= matManager.vFields[2].Pos.Y) {
@@ -1844,7 +2130,7 @@ void ClientField::GetHoverField(int x, int y) {
 					hovered_sequence = 0;
 			}
 		}
-}
+	}
 }
 void ClientField::ShowMenu(int flag, int x, int y) {
 	if(!flag) {
@@ -1902,6 +2188,16 @@ void ClientField::ShowMenu(int flag, int x, int y) {
 		mainGame->btnShowList->setRelativePosition(position2di(1, height));
 		height += 21;
 	} else mainGame->btnShowList->setVisible(false);
+	if(flag & COMMAND_OPERATION) {
+		mainGame->btnOperation->setVisible(true);
+		mainGame->btnOperation->setRelativePosition(position2di(1, height));
+		height += 21;
+	} else mainGame->btnOperation->setVisible(false);
+	if(flag & COMMAND_RESET) {
+		mainGame->btnReset->setVisible(true);
+		mainGame->btnReset->setRelativePosition(position2di(1, height));
+		height += 21;
+	} else mainGame->btnReset->setVisible(false);
 	panel = mainGame->wCmdMenu;
 	mainGame->wCmdMenu->setVisible(true);
 	mainGame->wCmdMenu->setRelativePosition(irr::core::recti(x - 20 , y - 20 - height, x + 80, y - 20));
@@ -1911,6 +2207,26 @@ void ClientField::UpdateChainButtons() {
 		mainGame->btnChainIgnore->setPressed(mainGame->ignore_chain);
 		mainGame->btnChainAlways->setPressed(mainGame->always_chain);
 		mainGame->btnChainWhenAvail->setPressed(mainGame->chain_when_avail);
+	}
+}
+void ClientField::ShowCancelOrFinishButton(int buttonOp) {
+	if (!mainGame->chkHideHintButton->isChecked() && !mainGame->dInfo.isReplay) {
+		switch (buttonOp) {
+		case 1:
+			mainGame->btnCancelOrFinish->setText(dataManager.GetSysString(1295));
+			mainGame->btnCancelOrFinish->setVisible(true);
+			break;
+		case 2:
+			mainGame->btnCancelOrFinish->setText(dataManager.GetSysString(1296));
+			mainGame->btnCancelOrFinish->setVisible(true);
+			break;
+		case 0:
+		default:
+			mainGame->btnCancelOrFinish->setVisible(false);
+			break;
+		}
+	} else {
+		mainGame->btnCancelOrFinish->setVisible(false);
 	}
 }
 void ClientField::SetResponseSelectedCards() const {

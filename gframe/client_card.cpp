@@ -19,7 +19,6 @@ ClientCard::ClientCard() {
 	is_highlighting = false;
 	is_disabled = false;
 	is_reversed = false;
-	is_conti = false;
 	cmdFlag = 0;
 	code = 0;
 	chain_code = 0;
@@ -263,11 +262,9 @@ bool ClientCard::deck_sort_def(code_pointer p1, code_pointer p2) {
 	return p1->first < p2->first;
 }
 bool ClientCard::deck_sort_name(code_pointer p1, code_pointer p2) {
-	CardString cstr1;
-	CardString cstr2;
-	dataManager.GetString(p1->second.code, &cstr1);
-	dataManager.GetString(p2->second.code, &cstr2);
-	int res = wcscmp(cstr1.name, cstr2.name);
+	const wchar_t* name1 = dataManager.GetName(p1->first);
+	const wchar_t* name2 = dataManager.GetName(p2->first);
+	int res = wcscmp(name1, name2);
 	if(res != 0)
 		return res < 0;
 	return p1->first < p2->first;

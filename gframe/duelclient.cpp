@@ -288,6 +288,7 @@ void DuelClient::HandleSTOCPacketLan(char* data, unsigned int len) {
 		mainGame->btnChainIgnore->setVisible(false);
 		mainGame->btnChainAlways->setVisible(false);
 		mainGame->btnChainWhenAvail->setVisible(false);
+		mainGame->btnCancelOrFinish->setVisible(false);
 		mainGame->deckBuilder.result_string[0] = L'0';
 		mainGame->deckBuilder.result_string[1] = 0;
 		mainGame->deckBuilder.results.clear();
@@ -400,11 +401,10 @@ void DuelClient::HandleSTOCPacketLan(char* data, unsigned int len) {
 				mainGame->btnHostPrepKick[1]->setVisible(false);
 			}
 			mainGame->chkHostPrepReady[0]->setEnabled(false);
-			mainGame->chkHostPrepReady[0]->setChecked(false);
 			mainGame->chkHostPrepReady[1]->setEnabled(false);
-			mainGame->chkHostPrepReady[1]->setChecked(false);
 			if(selftype < 2) {
 				mainGame->chkHostPrepReady[selftype]->setEnabled(true);
+				mainGame->chkHostPrepReady[selftype]->setChecked(false);
 				mainGame->btnHostPrepDuelist->setEnabled(false);
 				mainGame->btnHostPrepOB->setEnabled(true);
 			} else {
@@ -511,6 +511,7 @@ void DuelClient::HandleSTOCPacketLan(char* data, unsigned int len) {
 		mainGame->btnChainIgnore->setVisible(false);
 		mainGame->btnChainAlways->setVisible(false);
 		mainGame->btnChainWhenAvail->setVisible(false);
+		mainGame->btnCancelOrFinish->setVisible(false);
 		mainGame->stMessage->setText(dataManager.GetSysString(1500));
 		mainGame->PopupElement(mainGame->wMessage);
 		mainGame->gMutex.Unlock();
@@ -540,6 +541,7 @@ void DuelClient::HandleSTOCPacketLan(char* data, unsigned int len) {
 		mainGame->btnChainIgnore->setVisible(false);
 		mainGame->btnChainAlways->setVisible(false);
 		mainGame->btnChainWhenAvail->setVisible(false);
+		mainGame->btnCancelOrFinish->setVisible(false);
 		time_t nowtime = time(NULL);
 		struct tm *localedtime = localtime(&nowtime);
 		char timebuf[40];
@@ -941,7 +943,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			desc =  BufferIO::ReadInt32(pbuf);
 			pcard = mainGame->dField.GetCard(con, loc, seq);
 			mainGame->dField.activatable_cards.push_back(pcard);
-			mainGame->dField.activatable_descs.push_back(desc);
+			mainGame->dField.activatable_descs.push_back(std::make_pair(desc,0));
 			pcard->cmdFlag |= COMMAND_ACTIVATE;
 			if (pcard->location == LOCATION_GRAVE)
 				mainGame->dField.grave_act = true;
@@ -1055,7 +1057,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			desc = BufferIO::ReadInt32(pbuf);
 			pcard = mainGame->dField.GetCard(con, loc, seq);
 			mainGame->dField.activatable_cards.push_back(pcard);
-			mainGame->dField.activatable_descs.push_back(desc);
+			mainGame->dField.activatable_descs.push_back(std::make_pair(desc, 0));
 			pcard->cmdFlag |= COMMAND_ACTIVATE;
 			if (pcard->location == LOCATION_GRAVE)
 				mainGame->dField.grave_act = true;
@@ -1180,6 +1182,11 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			mainGame->stHintMsg->setText(textBuffer);
 			mainGame->stHintMsg->setVisible(true);
 		}
+		if (mainGame->dField.select_cancelable) {
+			mainGame->dField.ShowCancelOrFinishButton(1);
+		} else {
+			mainGame->dField.ShowCancelOrFinishButton(0);
+		}
 		return false;
 	}
 	case MSG_SELECT_CHAIN: {
@@ -1192,11 +1199,13 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 		int code, c, l, s, ss, desc;
 		ClientCard* pcard;
 		bool panelmode = false;
+		bool conti_exist = false;
 		mainGame->dField.chain_forced = (forced != 0);
 		mainGame->dField.activatable_cards.clear();
 		mainGame->dField.activatable_descs.clear();
 		mainGame->dField.conti_cards.clear();
 		for (int i = 0; i < count; ++i) {
+			int flag = BufferIO::ReadInt8(pbuf);
 			code = BufferIO::ReadInt32(pbuf);
 			c = mainGame->LocalPlayer(BufferIO::ReadInt8(pbuf));
 			l = BufferIO::ReadInt8(pbuf);
@@ -1205,17 +1214,19 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			desc = BufferIO::ReadInt32(pbuf);
 			pcard = mainGame->dField.GetCard(c, l, s, ss);
 			mainGame->dField.activatable_cards.push_back(pcard);
-			mainGame->dField.activatable_descs.push_back(desc);
+			mainGame->dField.activatable_descs.push_back(std::make_pair(desc, flag));
 			pcard->is_selected = false;
-			if(code >= 1000000000) {
-				pcard->is_conti = true;
-				pcard->chain_code = code % 1000000000;
-				mainGame->dField.conti_cards.push_back(pcard);
-				mainGame->dField.remove_act = true;
-			} else {
+			if(flag == EDESC_OPERATION) {
 				pcard->chain_code = code;
+				mainGame->dField.conti_cards.push_back(pcard);
+				mainGame->dField.conti_act = true;
+				conti_exist = true;
+			} else {
 				pcard->is_selectable = true;
-				pcard->cmdFlag |= COMMAND_ACTIVATE;
+				if(flag == EDESC_RESET)
+					pcard->cmdFlag |= COMMAND_RESET;
+				else
+					pcard->cmdFlag |= COMMAND_ACTIVATE;
 				if(l == LOCATION_GRAVE)
 					mainGame->dField.grave_act = true;
 				else if(l == LOCATION_REMOVED)
@@ -1242,7 +1253,10 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			return true;
 		}
 		mainGame->gMutex.Lock();
-		mainGame->stHintMsg->setText(dataManager.GetSysString(550));
+		if(!conti_exist)
+			mainGame->stHintMsg->setText(dataManager.GetSysString(550));
+		else
+			mainGame->stHintMsg->setText(dataManager.GetSysString(556));
 		mainGame->stHintMsg->setVisible(true);
 		if(panelmode) {
 			mainGame->dField.list_command = COMMAND_ACTIVATE;
@@ -1401,13 +1415,16 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 		mainGame->gMutex.Lock();
 		mainGame->stHintMsg->setText(textBuffer);
 		mainGame->stHintMsg->setVisible(true);
+		if (mainGame->dField.select_cancelable) {
+			mainGame->dField.ShowCancelOrFinishButton(1);
+		}
 		mainGame->gMutex.Unlock();
 		return false;
 	}
 	case MSG_SELECT_COUNTER: {
 		/*int selecting_player = */BufferIO::ReadInt8(pbuf);
 		mainGame->dField.select_counter_type = BufferIO::ReadInt16(pbuf);
-		mainGame->dField.select_counter_count = BufferIO::ReadInt8(pbuf);
+		mainGame->dField.select_counter_count = BufferIO::ReadInt16(pbuf);
 		int count = BufferIO::ReadInt8(pbuf);
 		mainGame->dField.selectable_cards.clear();
 		int c, l, s, t/*, code*/;
@@ -1417,7 +1434,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			c = mainGame->LocalPlayer(BufferIO::ReadInt8(pbuf));
 			l = BufferIO::ReadInt8(pbuf);
 			s = BufferIO::ReadInt8(pbuf);
-			t = BufferIO::ReadInt8(pbuf);
+			t = BufferIO::ReadInt16(pbuf);
 			pcard = mainGame->dField.GetCard(c, l, s);
 			mainGame->dField.selectable_cards.push_back(pcard);
 			pcard->opParam = (t << 16) | t;
@@ -1613,6 +1630,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 				l = pcard->location;
 				if (l == LOCATION_HAND) {
 					mainGame->dField.MoveCard(pcard, 5);
+					pcard->is_highlighting = true;
 				} else if (l == LOCATION_MZONE) {
 					if (pcard->position & POS_FACEUP)
 						continue;
@@ -1632,9 +1650,14 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 					pcard->aniFrame = 5;
 				}
 			}
-			mainGame->WaitFrameSignal(90);
+			if (mainGame->dInfo.isReplay)
+				mainGame->WaitFrameSignal(30);
+			else
+				mainGame->WaitFrameSignal(90);
 			for(size_t i = 0; i < field_confirm.size(); ++i) {
-				mainGame->dField.MoveCard(field_confirm[i], 5);
+				pcard = field_confirm[i];
+				mainGame->dField.MoveCard(pcard, 5);
+				pcard->is_highlighting = false;
 			}
 			mainGame->WaitFrameSignal(5);
 		}
@@ -1849,16 +1872,16 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 			mainGame->btnLeaveGame->setVisible(true);
 		}
 		if(!mainGame->dInfo.isReplay && mainGame->dInfo.player_type < 7) {
-			if(!mainGame->chkHideChainButton->isChecked()) {
+			if(mainGame->gameConf.control_mode == 0) {
 				mainGame->btnChainIgnore->setVisible(true);
 				mainGame->btnChainAlways->setVisible(true);
 				mainGame->btnChainWhenAvail->setVisible(true);
 				mainGame->dField.UpdateChainButtons();
-			}
-			else {
+			} else {
 				mainGame->btnChainIgnore->setVisible(false);
 				mainGame->btnChainAlways->setVisible(false);
 				mainGame->btnChainWhenAvail->setVisible(false);
+				mainGame->btnCancelOrFinish->setVisible(false);
 			}
 		}
 		if(mainGame->dInfo.isTag && mainGame->dInfo.turn != 1) {
@@ -2903,6 +2926,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 	case MSG_ANNOUNCE_CARD: {
 		/*int player = */mainGame->LocalPlayer(BufferIO::ReadInt8(pbuf));
 		mainGame->dField.declarable_type = BufferIO::ReadInt32(pbuf);
+		mainGame->dField.opcode.clear();
 		if(select_hint)
 			myswprintf(textBuffer, L"%ls", dataManager.GetDesc(select_hint));
 		else myswprintf(textBuffer, dataManager.GetSysString(564));
@@ -2910,6 +2934,7 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 		mainGame->gMutex.Lock();
 		mainGame->ebANCard->setText(L"");
 		mainGame->wANCard->setText(textBuffer);
+		mainGame->dField.UpdateDeclarableCode(true);
 		mainGame->PopupElement(mainGame->wANCard);
 		mainGame->gMutex.Unlock();
 		return false;
@@ -2931,6 +2956,25 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 		select_hint = 0;
 		mainGame->wANNumber->setText(textBuffer);
 		mainGame->PopupElement(mainGame->wANNumber);
+		mainGame->gMutex.Unlock();
+		return false;
+	}
+	case MSG_ANNOUNCE_CARD_FILTER: {
+		/*int player = */mainGame->LocalPlayer(BufferIO::ReadInt8(pbuf));
+		int count = BufferIO::ReadInt8(pbuf);
+		mainGame->dField.declarable_type = 0;
+		mainGame->dField.opcode.clear();
+		for (int i = 0; i < count; ++i)
+			mainGame->dField.opcode.push_back(BufferIO::ReadInt32(pbuf));
+		if(select_hint)
+			myswprintf(textBuffer, L"%ls", dataManager.GetDesc(select_hint));
+		else myswprintf(textBuffer, dataManager.GetSysString(564));
+		select_hint = 0;
+		mainGame->gMutex.Lock();
+		mainGame->ebANCard->setText(L"");
+		mainGame->wANCard->setText(textBuffer);
+		mainGame->dField.UpdateDeclarableCode(true);
+		mainGame->PopupElement(mainGame->wANCard);
 		mainGame->gMutex.Unlock();
 		return false;
 	}
@@ -2968,6 +3012,20 @@ int DuelClient::ClientAnalyze(char * msg, unsigned int len) {
 				pcard->is_highlighting = false;
 				mainGame->showcard = 0;
 			}
+		}
+		return true;
+	}
+	case MSG_PLAYER_HINT: {
+		int player = mainGame->LocalPlayer(BufferIO::ReadInt8(pbuf));
+		int chtype = BufferIO::ReadInt8(pbuf);
+		int value = BufferIO::ReadInt32(pbuf);
+		auto& player_desc_hints = mainGame->dField.player_desc_hints[player];
+		if(chtype == PHINT_DESC_ADD) {
+			player_desc_hints[value]++;
+		} else if(chtype == PHINT_DESC_REMOVE) {
+			player_desc_hints[value]--;
+			if(player_desc_hints[value] == 0)
+				player_desc_hints.erase(value);
 		}
 		return true;
 	}
@@ -3252,6 +3310,9 @@ void DuelClient::SendResponse() {
 		break;
 	}
 	case MSG_SELECT_SUM: {
+		for(int i = 0; i < mainGame->dField.must_select_count; ++i) {
+			mainGame->dField.selected_cards[i]->is_selected = false;
+		}
 		for(size_t i = 0; i < mainGame->dField.selectsum_all.size(); ++i) {
 			mainGame->dField.selectsum_all[i]->is_selectable = false;
 			mainGame->dField.selectsum_all[i]->is_selected = false;

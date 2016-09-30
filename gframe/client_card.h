@@ -41,7 +41,7 @@ struct CardString {
 	wchar_t* text;
 	wchar_t* desc[16];
 };
-typedef std::unordered_map<unsigned int, CardDataC>::iterator code_pointer;
+typedef std::unordered_map<unsigned int, CardDataC>::const_iterator code_pointer;
 
 class ClientCard {
 public:
@@ -63,7 +63,6 @@ public:
 	bool is_showtarget;
 	bool is_highlighting;
 	bool is_reversed;
-	bool is_conti;
 	u32 code;
 	u32 chain_code;
 	u32 alias;

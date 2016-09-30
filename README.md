@@ -11,10 +11,15 @@ A script engine for "yu-gi-oh!" and sample gui
 * F1~F4: Show the cards in your grave, banished zone, extra deck, xyz materials.
 * F5~F8: Show the cards in your opponent's grave, banished zone, extra deck, xyz materials.
 
-###Color:
-* Background: 
-* White = your card, Grey = your opponent's card
-* Text: 
+###Color in card list:
+####Background: 
+* White = your card, Grey = your opponent's card  
+
+####Text: 
+Cards in deck, extra deck and banished zone: 
+* Black = face-up, Blue = face-down
+
+Xyz materials:
 * Black = default, Blue = the owner of the xyz material is different from its controller
 
 ###Sequence:

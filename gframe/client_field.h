@@ -37,7 +37,7 @@ public:
 	std::vector<ClientCard*> activatable_cards;
 	std::vector<ClientCard*> attackable_cards;
 	std::vector<ClientCard*> conti_cards;
-	std::vector<int> activatable_descs;
+	std::vector<std::pair<int,int>> activatable_descs;
 	std::vector<int> select_options;
 	std::vector<ChainInfo> chains;
 	int extra_p_count[2];
@@ -63,17 +63,21 @@ public:
 	std::vector<ClientCard*> selected_cards;
 	std::set<ClientCard*> selectsum_cards;
 	std::vector<ClientCard*> selectsum_all;
+	std::vector<int> opcode;
 	std::vector<ClientCard*> display_cards;
 	std::vector<int> sort_list;
+	std::map<int, int> player_desc_hints[2];
 	bool grave_act;
 	bool remove_act;
 	bool deck_act;
 	bool extra_act;
 	bool pzone_act[2];
+	bool conti_act;
 	bool chain_forced;
 	ChainInfo current_chain;
 	bool last_chain;
 	bool deck_reversed;
+	bool conti_selecting;
 	
 	ClientField();
 	void Clear();
@@ -102,7 +106,9 @@ public:
 	bool check_sel_sum_s(const std::set<ClientCard*>& left, int index, int acc);
 	void check_sel_sum_t(const std::set<ClientCard*>& left, int acc);
 	bool check_sum(std::set<ClientCard*>::const_iterator index, std::set<ClientCard*>::const_iterator end, int acc, int count);
-	
+
+	void UpdateDeclarableCodeType(bool enter);
+	void UpdateDeclarableCodeOpcode(bool enter);
 	void UpdateDeclarableCode(bool enter);
 
 	irr::gui::IGUIElement* panel;
@@ -114,16 +120,17 @@ public:
 	int command_location;
 	size_t command_sequence;
 	ClientCard* hovered_card;
+	int hovered_player;
 	ClientCard* clicked_card;
 	ClientCard* command_card;
 	ClientCard* highlighting_card;
 	int list_command;
-	wchar_t formatBuffer[2048];
 
 	virtual bool OnEvent(const irr::SEvent& event);
 	void GetHoverField(int x, int y);
 	void ShowMenu(int flag, int x, int y);
 	void UpdateChainButtons();
+	void ShowCancelOrFinishButton(int buttonOp);
 	void SetResponseSelectedCards() const;
 };
 
