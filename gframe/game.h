@@ -114,6 +114,9 @@ public:
 		return focus && focus->hasType(type);
 	}
 
+	void SetWindowsIcon();
+	void FlashWindow();
+
 	Mutex gMutex;
 	Mutex gBuffer;
 	Signal frameSignal;
@@ -166,6 +169,11 @@ public:
 	irr::video::IVideoDriver* driver;
 	irr::scene::ISceneManager* smgr;
 	irr::scene::ICameraSceneNode* camera;
+
+#ifdef _WIN32
+	HWND hWnd;
+#endif
+
 	//GUI
 	irr::gui::IGUIEnvironment* env;
 	irr::gui::CGUITTFont* guiFont;
