@@ -982,6 +982,9 @@ void Game::SaveConfig() {
 	fprintf(fp, "mute_spectators = %d\n", ((mainGame->chkIgnore2->isChecked()) ? 1 : 0));
 	fprintf(fp, "hide_setname = %d\n", ((mainGame->chkHideSetname->isChecked()) ? 1 : 0));
 	fprintf(fp, "hide_hint_button = %d\n", ((mainGame->chkHideHintButton->isChecked()) ? 1 : 0));
+	// percival
+	fprintf(fp, "alignment_fix = 1\n");
+	fprintf(fp, "ignore_instant_updates = 1\n");
 	fprintf(fp, "#control_mode = 0: Key A/S/D/R Chain Buttons. control_mode = 1: MouseLeft/MouseRight/NULL/F9 Without Chain Buttons\n");
 	fprintf(fp, "control_mode = %d\n", gameConf.control_mode);
 	fprintf(fp, "draw_field_spell = %d\n", gameConf.draw_field_spell);
