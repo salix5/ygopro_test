@@ -5,7 +5,6 @@
 
 int enable_log = 0;
 bool exit_on_return = false;
-bool keep_on_return = false;
 bool open_file = false;
 wchar_t open_file_name[256] = L"";
 
@@ -35,6 +34,13 @@ void ClickButton(irr::gui::IGUIElement* btn) {
 
 int main(int argc, char* argv[]) {
 #ifdef _WIN32
+	wchar_t exepath[MAX_PATH];
+	GetModuleFileName(NULL, exepath, MAX_PATH);
+	wchar_t* p = wcsrchr(exepath, '\\');
+	*p = '\0';
+	SetCurrentDirectory(exepath);
+#endif //_WIN32
+#ifdef _WIN32
 	WORD wVersionRequested;
 	WSADATA wsaData;
 	wVersionRequested = MAKEWORD(2, 2);
@@ -48,6 +54,7 @@ int main(int argc, char* argv[]) {
 	if(!ygo::mainGame->Initialize())
 		return 0;
 
+	bool keep_on_return = false;
 	for(int i = 1; i < argc; ++i) {
 		if(argv[i][0] == '-' && argv[i][1] == 'e') {
 			char param[128];
@@ -84,8 +91,6 @@ int main(int argc, char* argv[]) {
 			GetParameterW(param, &argv[i][0]);
 			ygo::mainGame->ebJoinPass->setText(param);
 			continue;
-		} else if(!strcmp(argv[i], "-x")) { // eXit on return
-			exit_on_return = true;
 		} else if(!strcmp(argv[i], "-k")) { // Keep on return
 			exit_on_return = false;
 			keep_on_return = true;
